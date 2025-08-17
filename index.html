@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adventure Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Roboto:wght@300;400;700&display=swap');
+
+        :root {
+            --dark-bg: #1a1a1a;
+            --dark-panel-bg: #2c2c2c;
+            --dark-border: #444;
+            --light-text: #e0e0e0;
+            --primary-accent: #a37e2c;
+            --log-location: #87ceeb;
+            --log-goal: #98fb98;
+            --log-reputation: #ffd700;
+            --log-inventory: #dda0dd;
+            --log-error: #ff6b6b;
+            --log-warning: #feca57;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--light-text);
+            font-family: 'Roboto', sans-serif;
+        }
+
+        h1, h2, h3, h4, h5, h6, .card-header, .accordion-button {
+            font-family: 'IM Fell English', serif;
+        }
+
+        .card, .accordion-item {
+            background-color: var(--dark-panel-bg);
+            border: 1px solid var(--dark-border);
+        }
+
+        .card-header, .accordion-header {
+            border-bottom: 1px solid var(--dark-border);
+        }
+
+        .accordion-button {
+            background-color: var(--dark-panel-bg);
+            color: var(--light-text);
+        }
+        .accordion-button:not(.collapsed) {
+            background-color: #333;
+            color: var(--primary-accent);
+        }
+        .accordion-button:focus {
+            box-shadow: 0 0 0 0.25rem rgba(163, 126, 44, 0.25);
+        }
+        .accordion-button::after {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
+        /* Ensure the side panels container doesn't overflow the page */
+        #side-panels-container {
+            max-height: 100%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #log-panel {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .log-location { color: var(--log-location); }
+        .log-goal { color: var(--log-goal); }
+        .log-reputation { color: var(--log-reputation); }
+        .log-inventory { color: var(--log-inventory); }
+        .log-error { color: var(--log-error); font-weight: bold; }
+        .log-warning { color: var(--log-warning); }
+        .log-game-event { font-style: italic; color: var(--primary-accent); }
+
+        /* Responsive Layout */
+        @media (max-width: 767.98px) {
+            main {
+                flex-direction: column;
+            }
+            .main-content-col {
+                order: 1; /* Log panel first */
+                height: 50vh; /* Allocate more space */
+            }
+            .side-panels-col {
+                order: 2; /* Side panels second */
+                height: 50vh;
+            }
+            #side-panels-container {
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                width: 100%;
+            }
+            .accordion {
+                display: flex;
+                flex-direction: row;
+            }
+            .accordion-item {
+                width: 300px;
+                flex-shrink: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container-fluid vh-100 d-flex flex-column p-3">
+        <div class="row flex-grow-1">
+            <!-- Main Content: Event Log -->
+            <div class="col-md-8 d-flex flex-column main-content-col">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h4>Log</h4>
+                    </div>
+                    <div id="log-panel" class="card-body overflow-auto">
+                        <!-- Game events will be logged here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side Panels -->
+            <div class="col-md-4 d-flex flex-column side-panels-col">
+                <div id="side-panels-container">
+                    <div class="accordion" id="side-panels">
+                        <!-- Player Panel -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#player-panel-collapse" aria-expanded="true" aria-controls="player-panel-collapse">
+                                Player
+                            </button>
+                        </h2>
+                        <div id="player-panel-collapse" class="accordion-collapse collapse show" data-bs-parent="#side-panels">
+                            <div id="player-panel" class="accordion-body">
+                                <!-- Player stats and reputation go here -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Exits Panel -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#exits-panel-collapse" aria-expanded="false" aria-controls="exits-panel-collapse">
+                                Exits
+                            </button>
+                        </h2>
+                        <div id="exits-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                            <div id="exits-panel" class="accordion-body">
+                                <!-- Clickable exits go here -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Interactibles Panel -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#interact-panel-collapse" aria-expanded="false" aria-controls="interact-panel-collapse">
+                                Interact
+                            </button>
+                        </h2>
+                        <div id="interact-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                            <div id="interact-panel" class="accordion-body">
+                                <!-- Characters and items to interact with -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Inventory Panel -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#inventory-panel-collapse" aria-expanded="false" aria-controls="inventory-panel-collapse">
+                                Inventory
+                            </button>
+                        </h2>
+                        <div id="inventory-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                            <div id="inventory-panel" class="accordion-body">
+                                <!-- Player inventory -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Goals Panel -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#goals-panel-collapse" aria-expanded="false" aria-controls="goals-panel-collapse">
+                                Goals
+                            </button>
+                        </h2>
+                        <div id="goals-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                            <div id="goals-panel" class="accordion-body">
+                                <!-- Active and completed goals -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Map Panel -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#map-panel-collapse" aria-expanded="false" aria-controls="map-panel-collapse">
+                                Map
+                            </button>
+                        </h2>
+                        <div id="map-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                            <div id="map-panel" class="accordion-body">
+                                <!-- Location map will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Factions Panel -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#factions-panel-collapse" aria-expanded="false" aria-controls="factions-panel-collapse">
+                                Factions
+                            </button>
+                        </h2>
+                        <div id="factions-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                            <div id="factions-panel" class="accordion-body">
+                                <!-- Faction standings -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    <script>
+        // Game logic will go here
+        console.log("Game script loaded.");
+
+        class Character {
+            constructor(name, attributes, faction, inventory, skills = {}, equipment = { mainHand: null, offHand: null, armor: null }) {
+                this.name = name;
+                this.attributes = attributes; // e.g., { strength: 80, wit: 60 }
+                this.faction = faction;
+                this.inventory = inventory; // Array of item keys
+                this.skills = skills; // e.g., { 'heavy-weapons': 20, 'trading': 15 }
+                this.equipment = equipment; // e.g., { mainHand: 'sword', armor: 'chainmail' }
+            }
+        }
+
+        class Item {
+            constructor(name, description, type, slot, effects) {
+                this.name = name;
+                this.description = description;
+                this.type = type; // e.g., 'weapon', 'armor', 'consumable'
+                this.slot = slot; // e.g., 'mainHand', 'offHand', 'armor'
+                this.effects = effects; // e.g., { strength: 10 }
+            }
+        }
+
+        class Location {
+            constructor(name, description, connections, characters, items) {
+                this.name = name;
+                this.description = description;
+                this.connections = connections;
+                this.characters = characters;
+                this.items = items;
+            }
+        }
+
+        class Goal {
+            constructor(title, description, type = 'side', status = 'locked', subgoals = [], unlocks = []) {
+                this.title = title;
+                this.description = description;
+                this.type = type; // 'main' or 'side'
+                this.status = status; // 'locked', 'active', 'completed', 'failed'
+                this.subgoals = subgoals; // Array of goal keys
+                this.unlocks = unlocks; // Array of goal keys to unlock upon completion
+            }
+        }
+
+        class Game {
+            constructor() {
+                // Game Data
+                this.locations = {};
+                this.characters = {};
+                this.items = {};
+                this.goals = {};
+
+                // Game State
+                this.player = null;
+                this.currentLocation = null;
+                this.visitedLocations = new Set();
+                this.gameTime = 0; // in-game days
+                this.reputation = {}; // e.g., { 'Danes': 50, 'Geats': 70 }
+                this.flags = new Set(); // For story progression
+
+                // UI Element References
+                this.ui = {
+                    logPanel: document.getElementById('log-panel'),
+                    playerPanel: document.getElementById('player-panel'),
+                    exitsPanel: document.getElementById('exits-panel'),
+                    actionPanel: document.getElementById('interact-panel'), // Renamed for clarity
+                    inventoryPanel: document.getElementById('inventory-panel'),
+                    goalsPanel: document.getElementById('goals-panel'),
+                    mapPanel: document.getElementById('map-panel'),
+                    factionsPanel: document.getElementById('factions-panel'), // New panel
+                };
+            }
+
+            logMessage(message, type = 'normal') {
+                const logEntry = document.createElement('p');
+                logEntry.innerHTML = message; // Use innerHTML to allow for simple formatting
+                logEntry.className = `log-entry log-${type}`;
+                this.ui.logPanel.appendChild(logEntry);
+                this.ui.logPanel.scrollTop = this.ui.logPanel.scrollHeight; // Auto-scroll to bottom
+            }
+
+            calculateSuccessChance(skillName, baseChance = 50) {
+                const skillValue = this.player.skills[skillName] || 0;
+                // Formula: base chance + ( (100 - base chance) * (skill / 100) )
+                // A skill of 50 increases a 50% chance to 75%
+                const successRate = baseChance + ((100 - baseChance) * (skillValue / 100));
+                return Math.min(successRate, 100); // Cap at 100%
+            }
+
+            changeReputation(faction, amount) {
+                if (this.reputation[faction]) {
+                    this.reputation[faction] = Math.max(0, this.reputation[faction] + amount);
+                    this.logMessage(`Your reputation with ${faction} has changed by ${amount}.`, 'reputation');
+                }
+                this.updateUI();
+            }
+
+            equipItem(itemKey) {
+                const item = this.items[itemKey];
+                if (!item || !item.slot) return;
+
+                // Unequip any item in the same slot
+                if (this.player.equipment[item.slot]) {
+                    this.unequipItem(item.slot);
+                }
+
+                // Move item from inventory to equipment
+                this.player.inventory = this.player.inventory.filter(key => key !== itemKey);
+                this.player.equipment[item.slot] = itemKey;
+                this.logMessage(`You equip the ${item.name}.`, 'inventory');
+                this.updateUI();
+            }
+
+            unequipItem(slot) {
+                const itemKey = this.player.equipment[slot];
+                if (!itemKey) return;
+                const item = this.items[itemKey];
+
+                // Move item from equipment to inventory
+                this.player.equipment[slot] = null;
+                this.player.inventory.push(itemKey);
+                this.logMessage(`You unequip the ${item.name}.`, 'inventory');
+                this.updateUI();
+            }
+
+            async renderMap() {
+                this.ui.mapPanel.innerHTML = ''; // Clear previous map
+                let mapDefinition = 'graph TD\\n';
+
+                this.visitedLocations.forEach(locationName => {
+                    const location = this.locations[locationName];
+                    if (location) {
+                        mapDefinition += `    ${location.name.replace(/\s/g, '_')}[${location.name}]\n`;
+                        for (const direction in location.connections) {
+                            const connectedLocationName = location.connections[direction];
+                            if (this.visitedLocations.has(connectedLocationName)) {
+                                mapDefinition += `    ${location.name.replace(/\s/g, '_')} --> ${connectedLocationName.replace(/\s/g, '_')}\n`;
+                            }
+                        }
+                    }
+                });
+
+                mapDefinition += `\n    style ${this.currentLocation.name.replace(/\s/g, '_')} fill:#f9f,stroke:#333,stroke-width:4px`;
+
+                const pre = document.createElement('pre');
+                pre.className = 'mermaid';
+                pre.textContent = mapDefinition;
+                this.ui.mapPanel.appendChild(pre);
+
+                await mermaid.run({ nodes: [pre] });
+            }
+
+            updateUI() {
+                // Clear all panels
+                Object.values(this.ui).forEach(panel => {
+                    if(panel) panel.innerHTML = '';
+                });
+
+                // Render Player Panel
+                this.ui.playerPanel.innerHTML = `
+                    <h5>${this.player.name}</h5>
+                    <p><strong>Attributes:</strong></p>
+                    <ul>
+                        ${Object.entries(this.player.attributes).map(([key, value]) => `<li>${key}: ${value}</li>`).join('')}
+                    </ul>
+                    <p><strong>Skills:</strong></p>
+                    <ul>
+                        ${Object.entries(this.player.skills).map(([key, value]) => `<li>${key}: ${value}%</li>`).join('')}
+                    </ul>
+                `;
+
+                // Render Factions Panel
+                this.ui.factionsPanel.innerHTML = `
+                    <ul>
+                        ${Object.entries(this.reputation).map(([key, value]) => `<li>${key}: ${value}</li>`).join('')}
+                    </ul>
+                `;
+
+                // Render Exits Panel
+                const exits = this.currentLocation.connections;
+                for (const direction in exits) {
+                    const locationName = exits[direction];
+                    const button = document.createElement('button');
+                    button.className = 'btn btn-outline-primary w-100 mb-2';
+                    button.textContent = `${direction.charAt(0).toUpperCase() + direction.slice(1)}: ${locationName}`;
+                    button.onclick = () => this.moveTo(locationName);
+                    this.ui.exitsPanel.appendChild(button);
+                }
+
+                // Render Action Panel
+                this.currentLocation.characters.forEach(charKey => {
+                    const character = this.characters[charKey];
+                    if (character !== this.player) {
+                        this.ui.actionPanel.innerHTML += `<p>${character.name}</p>`;
+                    }
+                });
+                this.currentLocation.items.forEach(itemKey => {
+                    const item = this.items[itemKey];
+                    this.ui.actionPanel.innerHTML += `<p>${item.name}</p>`;
+                });
+                if (this.ui.actionPanel.innerHTML === '') {
+                    this.ui.actionPanel.innerHTML = '<p class="text-muted">Nothing to interact with.</p>';
+                }
+
+                // Render Inventory Panel
+                this.ui.inventoryPanel.innerHTML = '<h6>Equipped</h6>';
+                let equippedItems = false;
+                for(const slot in this.player.equipment) {
+                    const itemKey = this.player.equipment[slot];
+                    if(itemKey) {
+                        const item = this.items[itemKey];
+                        this.ui.inventoryPanel.innerHTML += `<p>${item.name} (${slot}) <button class="btn btn-sm btn-secondary" onclick="game.unequipItem('${slot}')">Unequip</button></p>`;
+                        equippedItems = true;
+                    }
+                }
+                if(!equippedItems) this.ui.inventoryPanel.innerHTML += '<p class="text-muted">Nothing equipped.</p>';
+
+                this.ui.inventoryPanel.innerHTML += '<h6 class="mt-3">Carried</h6>';
+                if (this.player.inventory.length > 0) {
+                    this.player.inventory.forEach(itemKey => {
+                        const item = this.items[itemKey];
+                        const equipButton = item.slot ? `<button class="btn btn-sm btn-primary" onclick="game.equipItem('${itemKey}')">Equip</button>` : '';
+                        this.ui.inventoryPanel.innerHTML += `<p>${item.name} ${equipButton}</p>`;
+                    });
+                } else {
+                    this.ui.inventoryPanel.innerHTML += '<p class="text-muted">Inventory is empty.</p>';
+                }
+
+                // Render Goals Panel
+                const renderGoal = (goalKey, depth = 0) => {
+                    const goal = this.goals[goalKey];
+                    if (!goal || goal.status === 'locked') return '';
+                    let goalHtml = `<div class="mb-2" style="margin-left: ${depth * 20}px;">
+                        <p class="mb-1"><strong>${goal.title}</strong> (${goal.status})</p>
+                        <small>${goal.description}</small>`;
+                    if (goal.status === 'active') {
+                        goalHtml += `<br><button class="btn btn-sm btn-success mt-1" onclick="game.completeGoal('${goalKey}')">Complete</button>`;
+                    }
+                    goalHtml += `</div>`;
+                    if(goal.subgoals.length > 0) {
+                        goal.subgoals.forEach(subgoalKey => {
+                            goalHtml += renderGoal(subgoalKey, depth + 1);
+                        });
+                    }
+                    return goalHtml;
+                }
+                Object.keys(this.goals).filter(key => this.goals[key].type === 'main').forEach(key => this.ui.goalsPanel.innerHTML += renderGoal(key));
+                Object.keys(this.goals).filter(key => this.goals[key].type === 'side').forEach(key => this.ui.goalsPanel.innerHTML += renderGoal(key));
+
+
+                // Render Map
+                this.renderMap();
+            }
+
+            saveState() {
+                const state = {
+                    currentLocation: this.currentLocation.name,
+                    visitedLocations: Array.from(this.visitedLocations),
+                    gameTime: this.gameTime,
+                    reputation: this.reputation,
+                    flags: Array.from(this.flags),
+                    player: {
+                        inventory: this.player.inventory,
+                        equipment: this.player.equipment,
+                        attributes: this.player.attributes,
+                        skills: this.player.skills,
+                    },
+                    goals: Object.keys(this.goals).reduce((acc, key) => {
+                        acc[key] = { status: this.goals[key].status };
+                        return acc;
+                    }, {})
+                };
+                localStorage.setItem('adventureGameSave', JSON.stringify(state));
+                console.log("Game state saved.");
+            }
+
+            loadState() {
+                const savedState = localStorage.getItem('adventureGameSave');
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    if (this.locations[state.currentLocation]) {
+                        this.currentLocation = this.locations[state.currentLocation];
+                        this.visitedLocations = new Set(state.visitedLocations);
+                        this.gameTime = state.gameTime;
+                        this.reputation = state.reputation;
+                        this.flags = new Set(state.flags);
+                        this.player.inventory = state.player.inventory;
+                        this.player.equipment = state.player.equipment;
+                        this.player.attributes = state.player.attributes;
+                        this.player.skills = state.player.skills;
+                        for(const key in state.goals) {
+                            if(this.goals[key]) this.goals[key].status = state.goals[key].status;
+                        }
+                        console.log("Game state loaded.");
+                        this.logMessage("Welcome back! Your progress has been restored.", "game-event");
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            moveTo(locationName) {
+                if (this.locations[locationName]) {
+                    this.currentLocation = this.locations[locationName];
+                    this.visitedLocations.add(locationName);
+                    this.gameTime++; // Advance time by 1 day per travel
+                    this.changeReputation('Danes', -1); // Reputation decay
+                    this.logMessage(`You travel to <strong>${this.currentLocation.name}</strong>. It is now Day ${this.gameTime}.`, 'location');
+                    this.logMessage(this.currentLocation.description);
+                    this.updateUI();
+                    this.saveState();
+                } else {
+                    console.error(`Attempted to move to unknown location: ${locationName}`);
+                    this.logMessage(`Error: Could not find location "${locationName}".`, 'error');
+                }
+            }
+
+            addGoal(goalKey) {
+                if (this.goals[goalKey] && this.goals[goalKey].status === 'locked') {
+                    this.goals[goalKey].status = 'active';
+                    this.logMessage(`New goal: ${this.goals[goalKey].title}`, 'goal');
+                    this.updateUI();
+                }
+            }
+
+            completeGoal(goalKey) {
+                const goal = this.goals[goalKey];
+                if (goal && goal.status === 'active') {
+                    // Check if all subgoals are completed
+                    const subgoalsCompleted = goal.subgoals.every(sgKey => this.goals[sgKey].status === 'completed');
+                    if (!subgoalsCompleted) {
+                        this.logMessage(`You must complete the sub-tasks for "${goal.title}" first.`, 'warning');
+                        return;
+                    }
+
+                    goal.status = 'completed';
+                    this.flags.add(goalKey);
+                    this.logMessage(`Goal completed: ${goal.title}`, 'goal');
+
+                    // Unlock next goals
+                    goal.unlocks.forEach(unlockKey => this.addGoal(unlockKey));
+
+                    this.updateUI();
+                    this.saveState();
+                }
+            }
+
+            async startGame(data) {
+                // Load items
+                for (const key in data.items) {
+                    const itemData = data.items[key];
+                    this.items[key] = new Item(itemData.name, itemData.description, itemData.type, itemData.slot, itemData.effects);
+                }
+
+                // Load characters
+                for (const key in data.characters) {
+                    const charData = data.characters[key];
+                    this.characters[key] = new Character(charData.name, charData.attributes, charData.faction, charData.inventory, charData.skills, charData.equipment);
+                }
+
+                // Load locations
+                for (const key in data.locations) {
+                    const locData = data.locations[key];
+                    this.locations[key] = new Location(locData.name, locData.description, locData.connections, locData.characters, locData.items);
+                }
+
+                // Load goals
+                for (const key in data.goals) {
+                    const goalData = data.goals[key];
+                    this.goals[key] = new Goal(goalData.title, goalData.description, goalData.type, goalData.status, goalData.subgoals, goalData.unlocks);
+                }
+
+                this.player = this.characters[data.playerCharacter];
+                this.reputation = data.initialReputation;
+
+                const loaded = this.loadState();
+                if (!loaded) {
+                    this.currentLocation = this.locations[data.startingLocation];
+                    this.visitedLocations.add(this.currentLocation.name);
+                    this.logMessage(`Welcome to ${data.gameTitle}!`, 'game-event');
+                    this.logMessage(`You are at <strong>${this.currentLocation.name}</strong>.`);
+                    // Activate initial goals
+                    Object.keys(this.goals).forEach(key => {
+                        if(this.goals[key].status === 'active') this.addGoal(key);
+                    });
+                }
+
+                this.logMessage(this.currentLocation.description);
+                this.updateUI();
+            }
+        }
+
+        // Initialize and load the game
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameData = {
+                gameTitle: "Saga of Beowulf",
+                playerCharacter: "Beowulf",
+                startingLocation: "Geatland",
+                initialReputation: { "Danes": 40, "Geats": 70, "Monsters": 0 },
+                locations: {
+                    "Geatland": {
+                        name: "Geatland",
+                        description: "Your windswept homeland. The sea calls to you, promising adventure.",
+                        connections: { "sail east": "Danish Coast" },
+                        characters: [],
+                        items: []
+                    },
+                    "Danish Coast": {
+                        name: "Danish Coast",
+                        description: "You've landed on the shores of Daneland. The great hall of Heorot lies inland.",
+                        connections: { "go inland": "Heorot", "sail west": "Geatland" },
+                        characters: [],
+                        items: []
+                    },
+                    "Heorot": {
+                        name: "Heorot",
+                        description: "The great mead hall of King Hrothgar, currently plagued by a nightly terror.",
+                        connections: { "go to coast": "Danish Coast", "descend to the mere": "The Haunted Mere" },
+                        characters: ["Hrothgar", "Wealhtheow", "Unferth"],
+                        items: []
+                    },
+                    "The Haunted Mere": {
+                        name: "The Haunted Mere",
+                        description: "A dark, misty swamp. They say a monster lurks in its depths.",
+                        connections: { "return to Heorot": "Heorot", "dive into the water": "Underwater Lair" },
+                        characters: ["GrendelsMother"],
+                        items: []
+                    },
+                    "Underwater Lair": {
+                        name: "Underwater Lair",
+                        description: "A foul cavern hidden from the sun, filled with ancient treasures and a palpable evil.",
+                        connections: { "surface": "The Haunted Mere" },
+                        characters: [],
+                        items: ["giants_sword"]
+                    },
+                    "Dragons Barrow": {
+                        name: "Dragon's Barrow",
+                        description: "An ancient burial mound, now home to a treasure-hoarding dragon.",
+                        connections: { "leave": "Geatland" },
+                        characters: ["Dragon"],
+                        items: ["treasure_hoard"]
+                    }
+                },
+                characters: {
+                    "Beowulf": {
+                        name: "Beowulf",
+                        attributes: { "strength": 80, "wit": 60, "valor": 70 },
+                        skills: { "unarmed": 30, "boasting": 20, "swords": 10 },
+                        faction: "Geats",
+                        inventory: [],
+                        equipment: { "mainHand": null, "offHand": null, "armor": null }
+                    },
+                    "Hrothgar": { name: "Hrothgar", attributes: { "strength": 30, "wit": 70 }, faction: "Danes", inventory: [] },
+                    "Wealhtheow": { name: "Wealhtheow", attributes: { "strength": 20, "wit": 80 }, faction: "Danes", inventory: [] },
+                    "Unferth": { name: "Unferth", attributes: { "strength": 60, "wit": 50 }, faction: "Danes", inventory: ["hrunting"] },
+                    "Wiglaf": { name: "Wiglaf", attributes: { "strength": 70, "wit": 60 }, faction: "Geats", inventory: [] },
+                    "Grendel": { name: "Grendel", attributes: { "strength": 95, "wit": 40 }, faction: "Monsters", inventory: [] },
+                    "GrendelsMother": { name: "Grendel's Mother", attributes: { "strength": 85, "wit": 65 }, faction: "Monsters", inventory: [] },
+                    "Dragon": { name: "The Dragon", attributes: { "strength": 100, "wit": 80 }, faction: "Monsters", inventory: [] }
+                },
+                items: {
+                    "hrunting": { name: "Hrunting", description: "A fine sword loaned by Unferth. Said to have never failed in battle.", type: "weapon", slot: "mainHand", effects: { "swords": 20 } },
+                    "giants_sword": { name: "Giant's Sword", description: "An enormous blade forged by giants, found in the mere.", type: "weapon", slot: "mainHand", effects: { "strength": 30 } },
+                    "grendels_arm": { name: "Grendel's Arm", description: "The monstrous arm of Grendel, a grisly trophy.", type: "trophy", slot: null, effects: {} },
+                    "treasure_hoard": { name: "Dragon's Hoard", description: "A vast pile of gold and jewels.", type: "treasure", slot: null, effects: {} }
+                },
+                goals: {
+                    "main_1": {
+                        title: "Slay the Beast of Heorot",
+                        description: "Travel to Daneland and defeat the monster Grendel.",
+                        type: "main",
+                        status: "active",
+                        subgoals: ["sub_1_1", "sub_1_2", "sub_1_3"],
+                        unlocks: ["main_2"]
+                    },
+                    "sub_1_1": { title: "Travel to Heorot", description: "Sail to the land of the Danes and find the great hall.", type: "main", status: "active" },
+                    "sub_1_2": { title: "Earn Hrothgar's Trust", description: "Prove your worth to the king through boasts or deeds.", type: "main", status: "locked" },
+                    "sub_1_3": { title: "Defeat Grendel", description: "Confront the beast in single combat.", type: "main", status: "locked" },
+                    "main_2": {
+                        title: "A Mother's Revenge",
+                        description: "Grendel's mother attacks Heorot. Hunt her down in her lair.",
+                        type: "main",
+                        status: "locked",
+                        subgoals: ["sub_2_1", "sub_2_2"],
+                        unlocks: ["main_3"]
+                    },
+                    "sub_2_1": { title: "Find the Mere", description: "Journey to the haunted swamp.", type: "main", status: "locked" },
+                    "sub_2_2": { title: "Slay Grendel's Mother", description: "Defeat the monster in her underwater cave.", type: "main", status: "locked" },
+                    "main_3": {
+                        title: "The Final Battle",
+                        description: "After years of peace, a dragon threatens your kingdom.",
+                        type: "main",
+                        status: "locked",
+                        subgoals: ["sub_3_1"],
+                        unlocks: []
+                    },
+                    "sub_3_1": { title: "Slay the Dragon", description: "Protect your people, no matter the cost.", type: "main", status: "locked" },
+                    "side_1": {
+                        title: "The Boasting Contest",
+                        description: "Shut down Unferth's challenge in a battle of wits.",
+                        type: "side",
+                        status: "locked"
+                    }
+                }
+            };
+            window.game = new Game();
+            game.startGame(gameData);
+        });
+    </script>
+</body>
+</html>
