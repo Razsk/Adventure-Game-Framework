@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,17 +9,24 @@
         @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Roboto:wght@300;400;700&display=swap');
 
         :root {
-            --dark-bg: #1e1e2e;
-            --dark-panel-bg: #2a2a40;
-            --dark-border: #4a4a68;
-            --light-text: #f0f0f0;
-            --primary-accent: #ff9900;
-            --log-location: #87ceeb;
-            --log-goal: #98fb98;
-            --log-reputation: #ffd700;
-            --log-inventory: #dda0dd;
-            --log-error: #ff6b6b;
-            --log-warning: #feca57;
+            /* Warm Tones Palette */
+            --dark-bg: #1C1C1C; /* soft black */
+            --light-text: #F5E8D8; /* warm beige */
+            --primary-accent: #DAA520; /* golden yellow */
+            --secondary-accent: #FF6F61; /* muted coral */
+            --hover-accent: #FF4500; /* burnt orange */
+
+            /* Derived/borrowed colors for UI elements */
+            --dark-panel-bg: #2C2C2C; /* slate gray */
+            --dark-border: #444444; /* dark gray */
+
+            /* Log-specific colors */
+            --log-location: var(--secondary-accent);
+            --log-goal: var(--primary-accent);
+            --log-reputation: var(--primary-accent);
+            --log-inventory: var(--light-text);
+            --log-error: var(--hover-accent);
+            --log-warning: var(--secondary-accent);
         }
 
         body {
@@ -46,11 +53,11 @@
             color: var(--light-text);
         }
         .accordion-button:not(.collapsed) {
-            background-color: #333;
+            background-color: var(--dark-bg);
             color: var(--primary-accent);
         }
         .accordion-button:focus {
-            box-shadow: 0 0 0 0.25rem rgba(255, 153, 0, 0.25);
+            box-shadow: 0 0 0 0.25rem rgba(218, 165, 32, 0.25);
         }
         .accordion-button::after {
             filter: invert(1) grayscale(100%) brightness(200%);
