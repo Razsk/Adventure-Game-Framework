@@ -9,11 +9,11 @@
         @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Roboto:wght@300;400;700&display=swap');
 
         :root {
-            --dark-bg: #1a1a1a;
-            --dark-panel-bg: #2c2c2c;
-            --dark-border: #444;
-            --light-text: #e0e0e0;
-            --primary-accent: #a37e2c;
+            --dark-bg: #1e1e2e;
+            --dark-panel-bg: #2a2a40;
+            --dark-border: #4a4a68;
+            --light-text: #f0f0f0;
+            --primary-accent: #ff9900;
             --log-location: #87ceeb;
             --log-goal: #98fb98;
             --log-reputation: #ffd700;
@@ -50,14 +50,14 @@
             color: var(--primary-accent);
         }
         .accordion-button:focus {
-            box-shadow: 0 0 0 0.25rem rgba(163, 126, 44, 0.25);
+            box-shadow: 0 0 0 0.25rem rgba(255, 153, 0, 0.25);
         }
         .accordion-button::after {
             filter: invert(1) grayscale(100%) brightness(200%);
         }
 
         /* Ensure the side panels container doesn't overflow the page */
-        #side-panels-container {
+        .side-panels-container {
             max-height: 100%;
             overflow-y: auto;
             display: flex;
@@ -108,10 +108,10 @@
     </style>
 </head>
 <body>
-    <main class="container-fluid vh-100 d-flex flex-column p-3">
+    <main class="container-fluid d-flex flex-column p-3">
         <div class="row flex-grow-1">
             <!-- Main Content: Event Log -->
-            <div class="col-md-8 d-flex flex-column main-content-col">
+            <div class="col-md-5 d-flex flex-column main-content-col">
                 <div class="card h-100">
                     <div class="card-header">
                         <h4>Log</h4>
@@ -122,9 +122,9 @@
                 </div>
             </div>
 
-            <!-- Side Panels -->
+            <!-- Side Panels Col 1 -->
             <div class="col-md-4 d-flex flex-column side-panels-col">
-                <div id="side-panels-container">
+                <div id="side-panels-container" class="side-panels-container">
                     <div class="accordion" id="side-panels">
                         <!-- Player Panel -->
                         <div class="accordion-item">
@@ -133,7 +133,7 @@
                                 Player
                             </button>
                         </h2>
-                        <div id="player-panel-collapse" class="accordion-collapse collapse show" data-bs-parent="#side-panels">
+                        <div id="player-panel-collapse" class="accordion-collapse collapse show">
                             <div id="player-panel" class="accordion-body">
                                 <!-- Player stats and reputation go here -->
                             </div>
@@ -146,7 +146,7 @@
                                 Exits
                             </button>
                         </h2>
-                        <div id="exits-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                        <div id="exits-panel-collapse" class="accordion-collapse collapse">
                             <div id="exits-panel" class="accordion-body">
                                 <!-- Clickable exits go here -->
                             </div>
@@ -159,7 +159,7 @@
                                 Interact
                             </button>
                         </h2>
-                        <div id="interact-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                        <div id="interact-panel-collapse" class="accordion-collapse collapse">
                             <div id="interact-panel" class="accordion-body">
                                 <!-- Characters and items to interact with -->
                             </div>
@@ -172,12 +172,19 @@
                                 Inventory
                             </button>
                         </h2>
-                        <div id="inventory-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                        <div id="inventory-panel-collapse" class="accordion-collapse collapse">
                             <div id="inventory-panel" class="accordion-body">
                                 <!-- Player inventory -->
                             </div>
                         </div>
                     </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Side Panels Col 2 -->
+            <div class="col-md-3 d-flex flex-column side-panels-col">
+                 <div id="side-panels-container-2" class="side-panels-container">
+                    <div class="accordion" id="side-panels-2">
                     <!-- Goals Panel -->
                     <div class="accordion-item">
                         <h2 class="accordion-header">
@@ -185,25 +192,26 @@
                                 Goals
                             </button>
                         </h2>
-                        <div id="goals-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                        <div id="goals-panel-collapse" class="accordion-collapse collapse">
                             <div id="goals-panel" class="accordion-body">
                                 <!-- Active and completed goals -->
                             </div>
                         </div>
                     </div>
-                    <!-- Map Panel -->
+                    <!-- Map Panel (disabled)
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#map-panel-collapse" aria-expanded="false" aria-controls="map-panel-collapse">
                                 Map
                             </button>
                         </h2>
-                        <div id="map-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                        <div id="map-panel-collapse" class="accordion-collapse collapse">
                             <div id="map-panel" class="accordion-body">
                                 <!-- Location map will be rendered here -->
                             </div>
                         </div>
                     </div>
+                    -->
                     <!-- Factions Panel -->
                     <div class="accordion-item">
                         <h2 class="accordion-header">
@@ -211,13 +219,13 @@
                                 Factions
                             </button>
                         </h2>
-                        <div id="factions-panel-collapse" class="accordion-collapse collapse" data-bs-parent="#side-panels">
+                        <div id="factions-panel-collapse" class="accordion-collapse collapse">
                             <div id="factions-panel" class="accordion-body">
                                 <!-- Faction standings -->
                             </div>
                         </div>
                     </div>
-                </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -226,7 +234,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <script>
-        mermaid.initialize({ startOnLoad: true });
+        mermaid.initialize({ startOnLoad: false });
     </script>
     <script>
         // Game logic will go here
@@ -298,7 +306,7 @@
                     actionPanel: document.getElementById('interact-panel'), // Renamed for clarity
                     inventoryPanel: document.getElementById('inventory-panel'),
                     goalsPanel: document.getElementById('goals-panel'),
-                    mapPanel: document.getElementById('map-panel'),
+                    // mapPanel: document.getElementById('map-panel'),
                     factionsPanel: document.getElementById('factions-panel'), // New panel
                 };
             }
@@ -355,37 +363,65 @@
                 this.updateUI();
             }
 
+            takeItem(itemKey) {
+                const item = this.items[itemKey];
+                if (!item) return;
+
+                // Remove from location and add to player inventory
+                this.currentLocation.items = this.currentLocation.items.filter(key => key !== itemKey);
+                this.player.inventory.push(itemKey);
+
+                this.logMessage(`You take the ${item.name}.`, 'inventory');
+                this.updateUI();
+                this.saveState();
+            }
+
+            interactWithCharacter(charKey) {
+                const character = this.characters[charKey];
+                if (!character) return;
+
+                // Placeholder interaction
+                this.logMessage(`You exchange pleasantries with ${character.name}.`);
+                // In a real game, this would trigger a dialogue tree or other system.
+            }
+
+            _getSafeMermaidId(name) {
+                // Mermaid IDs can't have special characters or spaces.
+                // Replace spaces and any non-alphanumeric characters with underscores.
+                return name.replace(/[^a-zA-Z0-9_]/g, '_');
+            }
+
             async renderMap() {
                 this.ui.mapPanel.innerHTML = ''; // Clear previous map
-                let mapDefinition = 'graph TD\\n';
 
-                this.visitedLocations.forEach(locationName => {
-                    const location = this.locations[locationName];
-                    if (location) {
-                        mapDefinition += `    ${location.name.replace(/\s/g, '_')}[${location.name}]\n`;
-                        for (const direction in location.connections) {
-                            const connectedLocationName = location.connections[direction];
-                            if (this.visitedLocations.has(connectedLocationName)) {
-                                mapDefinition += `    ${location.name.replace(/\s/g, '_')} --> ${connectedLocationName.replace(/\s/g, '_')}\n`;
-                            }
-                        }
-                    }
-                });
+                // Hardcoded simple graph for debugging
+                const mapDefinition = `
+graph TD
+    A[Start] --> B(End)
+`;
 
-                mapDefinition += `\n    style ${this.currentLocation.name.replace(/\s/g, '_')} fill:#f9f,stroke:#333,stroke-width:4px`;
+                const mermaidContainer = document.createElement('div');
+                mermaidContainer.className = 'mermaid';
+                mermaidContainer.textContent = mapDefinition;
+                this.ui.mapPanel.appendChild(mermaidContainer);
 
-                const pre = document.createElement('pre');
-                pre.className = 'mermaid';
-                pre.textContent = mapDefinition;
-                this.ui.mapPanel.appendChild(pre);
-
-                await mermaid.run({ nodes: [pre] });
+                try {
+                    await mermaid.run({ nodes: [mermaidContainer] });
+                } catch (e) {
+                    console.error("Mermaid rendering error:", e);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'alert alert-danger';
+                    errorDiv.textContent = 'Error rendering map. Test 2';
+                    this.ui.mapPanel.appendChild(errorDiv);
+                }
             }
 
             updateUI() {
-                // Clear all panels
-                Object.values(this.ui).forEach(panel => {
-                    if(panel) panel.innerHTML = '';
+                // Clear all panels except the log
+                Object.entries(this.ui).forEach(([name, panel]) => {
+                    if (panel && name !== 'logPanel') {
+                        panel.innerHTML = '';
+                    }
                 });
 
                 // Render Player Panel
@@ -423,12 +459,20 @@
                 this.currentLocation.characters.forEach(charKey => {
                     const character = this.characters[charKey];
                     if (character !== this.player) {
-                        this.ui.actionPanel.innerHTML += `<p>${character.name}</p>`;
+                        const button = document.createElement('button');
+                        button.className = 'btn btn-outline-secondary w-100 mb-2';
+                        button.textContent = `Talk to ${character.name}`;
+                        button.onclick = () => this.interactWithCharacter(charKey);
+                        this.ui.actionPanel.appendChild(button);
                     }
                 });
                 this.currentLocation.items.forEach(itemKey => {
                     const item = this.items[itemKey];
-                    this.ui.actionPanel.innerHTML += `<p>${item.name}</p>`;
+                    const button = document.createElement('button');
+                    button.className = 'btn btn-outline-success w-100 mb-2';
+                    button.textContent = `Take ${item.name}`;
+                    button.onclick = () => this.takeItem(itemKey);
+                    this.ui.actionPanel.appendChild(button);
                 });
                 if (this.ui.actionPanel.innerHTML === '') {
                     this.ui.actionPanel.innerHTML = '<p class="text-muted">Nothing to interact with.</p>';
@@ -476,12 +520,20 @@
                     }
                     return goalHtml;
                 }
-                Object.keys(this.goals).filter(key => this.goals[key].type === 'main').forEach(key => this.ui.goalsPanel.innerHTML += renderGoal(key));
-                Object.keys(this.goals).filter(key => this.goals[key].type === 'side').forEach(key => this.ui.goalsPanel.innerHTML += renderGoal(key));
+                const allSubgoalKeys = new Set();
+                Object.values(this.goals).forEach(g => {
+                    if (g.subgoals) {
+                        g.subgoals.forEach(sgKey => allSubgoalKeys.add(sgKey));
+                    }
+                });
+
+                Object.keys(this.goals)
+                    .filter(key => !allSubgoalKeys.has(key)) // Only render top-level goals
+                    .forEach(key => this.ui.goalsPanel.innerHTML += renderGoal(key));
 
 
-                // Render Map
-                this.renderMap();
+                // Render Map (disabled)
+                // this.renderMap();
             }
 
             saveState() {
