@@ -606,11 +606,32 @@ graph TD
                 }
             }
 
+            activateGoal(goalKey) {
+                const goal = this.goals[goalKey];
+                if (!goal) return;
+
+                // If goal was locked, activate it and log a message.
+                if (goal.status === 'locked') {
+                    goal.status = 'active';
+                    this.logMessage(`New goal: ${goal.title}`, 'goal');
+                }
+
+                // Activate any locked subgoals.
+                if (goal.subgoals && goal.subgoals.length > 0) {
+                    goal.subgoals.forEach(subgoalKey => {
+                        const subgoal = this.goals[subgoalKey];
+                        if (subgoal && subgoal.status === 'locked') {
+                            subgoal.status = 'active';
+                            this.logMessage(`New objective for "${goal.title}": ${subgoal.title}`, 'goal');
+                        }
+                    });
+                }
+            }
+
             addGoal(goalKey) {
-                if (this.goals[goalKey] && this.goals[goalKey].status === 'locked') {
-                    this.goals[goalKey].status = 'active';
-                    this.logMessage(`New goal: ${this.goals[goalKey].title}`, 'goal');
-                    this.updateUI();
+                const goal = this.goals[goalKey];
+                if (goal && goal.status === 'locked') {
+                    this.activateGoal(goalKey);
                 }
             }
 
@@ -672,7 +693,9 @@ graph TD
                     this.logMessage(`You are at <strong>${this.currentLocation.name}</strong>.`);
                     // Activate initial goals
                     Object.keys(this.goals).forEach(key => {
-                        if(this.goals[key].status === 'active') this.addGoal(key);
+                        if (this.goals[key].status === 'active') {
+                            this.activateGoal(key);
+                        }
                     });
                 }
 
