@@ -248,13 +248,15 @@
         console.log("Game script loaded.");
 
         class Character {
-            constructor(name, attributes, faction, inventory, skills = {}, equipment = { mainHand: null, offHand: null, armor: null }) {
+            constructor(name, attributes, faction, inventory, skills = {}, equipment = { mainHand: null, offHand: null, armor: null }, dialogue = {}, interactions = {}) {
                 this.name = name;
                 this.attributes = attributes; // e.g., { strength: 80, wit: 60 }
                 this.faction = faction;
                 this.inventory = inventory; // Array of item keys
                 this.skills = skills; // e.g., { 'heavy-weapons': 20, 'trading': 15 }
                 this.equipment = equipment; // e.g., { mainHand: 'sword', armor: 'chainmail' }
+                this.dialogue = dialogue;
+                this.interactions = interactions;
             }
         }
 
@@ -279,7 +281,7 @@
         }
 
         class Goal {
-            constructor(title, description, type = 'side', status = 'locked', subgoals = [], unlocks = [], conditions = { requiredItems: [], requiredCharacters: [], requiredFlags: [], requiredLocation: null }) {
+            constructor(title, description, type = 'side', status = 'locked', subgoals = [], unlocks = [], conditions = { requiredItems: [], requiredCharacters: [], requiredFlags: [], requiredLocation: null }, rewards = { items: [], reputation: {} }) {
                 this.title = title;
                 this.description = description;
                 this.type = type; // 'main' or 'side'
@@ -287,6 +289,7 @@
                 this.subgoals = subgoals; // Array of goal keys
                 this.unlocks = unlocks; // Array of goal keys to unlock upon completion
                 this.conditions = conditions; // e.g., { requiredItems: ['key'], requiredCharacters: ['npc_name'], requiredFlags: ['some_event'], requiredLocation: 'location_key' }
+                this.rewards = rewards;
             }
         }
 
@@ -388,9 +391,93 @@
                 const character = this.characters[charKey];
                 if (!character) return;
 
-                // Placeholder interaction
-                this.logMessage(`You exchange pleasantries with ${character.name}.`);
-                // In a real game, this would trigger a dialogue tree or other system.
+                let message = `<p>You exchange pleasantries with ${character.name}.</p>`; // Default fallback
+
+                if (character.dialogue) {
+                    const reversedFlags = [...this.flags].reverse();
+                    let foundMessage = false;
+
+                    for (const flag of reversedFlags) {
+                        if (character.dialogue[flag]) {
+                            message = `<p><strong>${character.name}:</strong> "${character.dialogue[flag]}"</p>`;
+                            foundMessage = true;
+                            break;
+                        }
+                    }
+
+                    if (!foundMessage && character.dialogue.default) {
+                        message = `<p><strong>${character.name}:</strong> "${character.dialogue.default}"</p>`;
+                    }
+                }
+
+                // Check for special "give item" interactions
+                if (character.interactions && character.interactions.gives) {
+                    for (const itemKey in character.interactions.gives) {
+                        if (this.player.inventory.includes(itemKey)) {
+                            const item = this.items[itemKey];
+                            message += `<button class="btn btn-sm btn-info mt-1" onclick="game.giveItem('${itemKey}', '${charKey}')">Offer ${item.name}</button>`;
+                        }
+                    }
+                }
+
+                this.logMessage(message, 'dialogue');
+            }
+
+            giveItem(itemKey, charKey) {
+                const character = this.characters[charKey];
+                const item = this.items[itemKey];
+
+                if (!this.player.inventory.includes(itemKey) || !character || !item) {
+                    this.logMessage('You cannot do that.', 'warning');
+                    return;
+                }
+
+                const interaction = character.interactions?.gives?.[itemKey];
+
+                if (interaction) {
+                    if (interaction.response) {
+                        this.logMessage(`<p><strong>${character.name}:</strong> "${interaction.response}"</p>`, 'dialogue');
+                    }
+
+                    if (interaction.removes_item) {
+                        this.player.inventory = this.player.inventory.filter(key => key !== itemKey);
+                    }
+
+                    if (interaction.adds_flag) {
+                        this.flags.add(interaction.adds_flag);
+                    }
+
+                    if (interaction.rewards) {
+                        if (interaction.rewards.items) {
+                            interaction.rewards.items.forEach(rewardItemKey => {
+                                if (character.inventory.includes(rewardItemKey)) {
+                                    character.inventory = character.inventory.filter(key => key !== rewardItemKey);
+                                }
+                                this.player.inventory.push(rewardItemKey);
+                                this.logMessage(`You received the ${this.items[rewardItemKey].name}.`, 'inventory');
+                            });
+                        }
+                        if (interaction.rewards.reputation) {
+                            for (const faction in interaction.rewards.reputation) {
+                                this.changeReputation(faction, interaction.rewards.reputation[faction]);
+                            }
+                        }
+                    }
+
+                    if (interaction.completes_goal) {
+                        const goal = this.goals[interaction.completes_goal];
+                        if (goal && (goal.status === 'active' || goal.status === 'locked')) {
+                            goal.status = 'completed';
+                            this.flags.add(interaction.completes_goal);
+                            this.logMessage(`Goal completed: ${goal.title}`, 'goal');
+                        }
+                    }
+                } else {
+                    this.logMessage(`${character.name} has no interest in the ${item.name}.`);
+                }
+
+                this.updateUI();
+                this.saveState();
             }
 
             _getSafeMermaidId(name) {
@@ -401,7 +488,7 @@
 
             areGoalConditionsMet(goal) {
                 if (!goal.conditions) {
-                    return false;
+                    return true; // No conditions means it's always met
                 }
 
                 const { requiredItems, requiredCharacters, requiredFlags, requiredLocation } = goal.conditions;
@@ -427,6 +514,47 @@
                 }
 
                 return true;
+            }
+
+            getGoalRequirementText(goal) {
+                if (!goal.conditions) return '';
+
+                const requirements = [];
+                const { requiredItems, requiredCharacters, requiredFlags, requiredLocation } = goal.conditions;
+
+                if (requiredLocation && this.currentLocation.name !== requiredLocation) {
+                    // Find the location key from its name for display
+                    const locKey = Object.keys(this.locations).find(key => this.locations[key].name === requiredLocation);
+                    requirements.push(`Be at ${this.locations[locKey]?.name || requiredLocation}`);
+                }
+
+                if (requiredItems) {
+                    requiredItems.forEach(itemKey => {
+                        if (!this.player.inventory.includes(itemKey)) {
+                            requirements.push(`Have '${this.items[itemKey]?.name || itemKey}'`);
+                        }
+                    });
+                }
+
+                if (requiredCharacters) {
+                    requiredCharacters.forEach(charKey => {
+                        if (!this.currentLocation.characters.includes(charKey)) {
+                            requirements.push(`Be with ${this.characters[charKey]?.name || charKey}`);
+                        }
+                    });
+                }
+
+                if (requiredFlags) {
+                    requiredFlags.forEach(flag => {
+                        if (!this.flags.has(flag)) {
+                            requirements.push(`Complete '${this.goals[flag]?.title || flag}'`);
+                        }
+                    });
+                }
+
+                if (requirements.length === 0) return '';
+
+                return `Requires: ${requirements.join(', ')}`;
             }
 
             async renderMap() {
@@ -553,18 +681,28 @@ graph TD
                                 <small>${goal.description}</small>
                                 <br><button class="btn btn-sm btn-primary mt-1" onclick="game.activateGoal('${goalKey}')">Start Quest</button>
                             </div>`;
+                        } else {
+                            const requirementsText = this.getGoalRequirementText(goal);
+                            goalHtml = `<div class="mb-2" style="margin-left: ${depth * 20}px; opacity: 0.7;">
+                                <p class="mb-1"><strong>${goal.title}</strong> (Locked)</p>
+                                <small>${goal.description}</small>
+                                <small class="d-block text-warning mt-1">${requirementsText}</small>
+                            </div>`;
                         }
                     } else { // Active, completed, failed
                         goalHtml = `<div class="mb-2" style="margin-left: ${depth * 20}px;">
                             <p class="mb-1"><strong>${goal.title}</strong> (${goal.status})</p>
                             <small>${goal.description}</small>`;
                         if (goal.status === 'active') {
-                            goalHtml += `<br><button class="btn btn-sm btn-success mt-1" onclick="game.completeGoal('${goalKey}')">Complete</button>`;
+                            const subgoalsCompleted = !goal.subgoals || goal.subgoals.every(sgKey => this.goals[sgKey]?.status === 'completed');
+                            if(subgoalsCompleted) {
+                                goalHtml += `<br><button class="btn btn-sm btn-success mt-1" onclick="game.completeGoal('${goalKey}')">Complete</button>`;
+                            }
                         }
                         goalHtml += `</div>`;
                     }
 
-                    if (goal.status !== 'locked' && goal.subgoals.length > 0) {
+                    if (goal.status !== 'locked' && goal.subgoals && goal.subgoals.length > 0) {
                         goal.subgoals.forEach(subgoalKey => {
                             goalHtml += renderGoal(subgoalKey, depth + 1);
                         });
@@ -697,6 +835,21 @@ graph TD
                     this.flags.add(goalKey);
                     this.logMessage(`Goal completed: ${goal.title}`, 'goal');
 
+                    // Grant rewards
+                    if (goal.rewards) {
+                        if (goal.rewards.items) {
+                            goal.rewards.items.forEach(itemKey => {
+                                this.player.inventory.push(itemKey);
+                                this.logMessage(`You received the ${this.items[itemKey].name}.`, 'inventory');
+                            });
+                        }
+                        if (goal.rewards.reputation) {
+                            for (const faction in goal.rewards.reputation) {
+                                this.changeReputation(faction, goal.rewards.reputation[faction]);
+                            }
+                        }
+                    }
+
                     // Unlock next goals
                     goal.unlocks.forEach(unlockKey => this.addGoal(unlockKey));
 
@@ -715,7 +868,7 @@ graph TD
                 // Load characters
                 for (const key in data.characters) {
                     const charData = data.characters[key];
-                    this.characters[key] = new Character(charData.name, charData.attributes, charData.faction, charData.inventory, charData.skills, charData.equipment);
+                    this.characters[key] = new Character(charData.name, charData.attributes, charData.faction, charData.inventory, charData.skills, charData.equipment, charData.dialogue, charData.interactions);
                 }
 
                 // Load locations
@@ -752,123 +905,10 @@ graph TD
             }
         }
 
+    <script src="web/game-data.js"></script>
+    <script>
         // Initialize and load the game
         document.addEventListener('DOMContentLoaded', () => {
-            const gameData = {
-                gameTitle: "Saga of Beowulf",
-                playerCharacter: "Beowulf",
-                startingLocation: "Geatland",
-                initialReputation: { "Danes": 40, "Geats": 70, "Monsters": 0 },
-                locations: {
-                    "Geatland": {
-                        name: "Geatland",
-                        description: "Your windswept homeland. The sea calls to you, promising adventure.",
-                        connections: { "sail east": "Danish Coast" },
-                        characters: [],
-                        items: []
-                    },
-                    "Danish Coast": {
-                        name: "Danish Coast",
-                        description: "You've landed on the shores of Daneland. The great hall of Heorot lies inland.",
-                        connections: { "go inland": "Heorot", "sail west": "Geatland" },
-                        characters: [],
-                        items: []
-                    },
-                    "Heorot": {
-                        name: "Heorot",
-                        description: "The great mead hall of King Hrothgar, currently plagued by a nightly terror.",
-                        connections: { "go to coast": "Danish Coast", "descend to the mere": "The Haunted Mere" },
-                        characters: ["Hrothgar", "Wealhtheow", "Unferth"],
-                        items: []
-                    },
-                    "The Haunted Mere": {
-                        name: "The Haunted Mere",
-                        description: "A dark, misty swamp. They say a monster lurks in its depths.",
-                        connections: { "return to Heorot": "Heorot", "dive into the water": "Underwater Lair" },
-                        characters: ["GrendelsMother"],
-                        items: []
-                    },
-                    "Underwater Lair": {
-                        name: "Underwater Lair",
-                        description: "A foul cavern hidden from the sun, filled with ancient treasures and a palpable evil.",
-                        connections: { "surface": "The Haunted Mere" },
-                        characters: [],
-                        items: ["giants_sword"]
-                    },
-                    "Dragons Barrow": {
-                        name: "Dragon's Barrow",
-                        description: "An ancient burial mound, now home to a treasure-hoarding dragon.",
-                        connections: { "leave": "Geatland" },
-                        characters: ["Dragon"],
-                        items: ["treasure_hoard"]
-                    }
-                },
-                characters: {
-                    "Beowulf": {
-                        name: "Beowulf",
-                        attributes: { "strength": 80, "wit": 60, "valor": 70 },
-                        skills: { "unarmed": 30, "boasting": 20, "swords": 10 },
-                        faction: "Geats",
-                        inventory: [],
-                        equipment: { "mainHand": null, "offHand": null, "armor": null }
-                    },
-                    "Hrothgar": { name: "Hrothgar", attributes: { "strength": 30, "wit": 70 }, faction: "Danes", inventory: [] },
-                    "Wealhtheow": { name: "Wealhtheow", attributes: { "strength": 20, "wit": 80 }, faction: "Danes", inventory: [] },
-                    "Unferth": { name: "Unferth", attributes: { "strength": 60, "wit": 50 }, faction: "Danes", inventory: ["hrunting"] },
-                    "Wiglaf": { name: "Wiglaf", attributes: { "strength": 70, "wit": 60 }, faction: "Geats", inventory: [] },
-                    "Grendel": { name: "Grendel", attributes: { "strength": 95, "wit": 40 }, faction: "Monsters", inventory: [] },
-                    "GrendelsMother": { name: "Grendel's Mother", attributes: { "strength": 85, "wit": 65 }, faction: "Monsters", inventory: [] },
-                    "Dragon": { name: "The Dragon", attributes: { "strength": 100, "wit": 80 }, faction: "Monsters", inventory: [] }
-                },
-                items: {
-                    "hrunting": { name: "Hrunting", description: "A fine sword loaned by Unferth. Said to have never failed in battle.", type: "weapon", slot: "mainHand", effects: { "swords": 20 } },
-                    "giants_sword": { name: "Giant's Sword", description: "An enormous blade forged by giants, found in the mere.", type: "weapon", slot: "mainHand", effects: { "strength": 30 } },
-                    "grendels_arm": { name: "Grendel's Arm", description: "The monstrous arm of Grendel, a grisly trophy.", type: "trophy", slot: null, effects: {} },
-                    "treasure_hoard": { name: "Dragon's Hoard", description: "A vast pile of gold and jewels.", type: "treasure", slot: null, effects: {} }
-                },
-                goals: {
-                    "main_1": {
-                        title: "Slay the Beast of Heorot",
-                        description: "Travel to Daneland and defeat the monster Grendel.",
-                        type: "main",
-                        status: "active",
-                        subgoals: ["sub_1_1", "sub_1_2", "sub_1_3"],
-                        unlocks: ["main_2"]
-                    },
-                    "sub_1_1": { title: "Travel to Heorot", description: "Sail to the land of the Danes and find the great hall.", type: "main", status: "active" },
-                    "sub_1_2": { title: "Earn Hrothgar's Trust", description: "Prove your worth to the king through boasts or deeds.", type: "main", status: "locked" },
-                    "sub_1_3": { title: "Defeat Grendel", description: "Confront the beast in single combat.", type: "main", status: "locked" },
-                    "main_2": {
-                        title: "A Mother's Revenge",
-                        description: "Grendel's mother attacks Heorot. Hunt her down in her lair.",
-                        type: "main",
-                        status: "locked",
-                        subgoals: ["sub_2_1", "sub_2_2"],
-                        unlocks: ["main_3"]
-                    },
-                    "sub_2_1": { title: "Find the Mere", description: "Journey to the haunted swamp.", type: "main", status: "locked" },
-                    "sub_2_2": { title: "Slay Grendel's Mother", description: "Defeat the monster in her underwater cave.", type: "main", status: "locked" },
-                    "main_3": {
-                        title: "The Final Battle",
-                        description: "After years of peace, a dragon threatens your kingdom.",
-                        type: "main",
-                        status: "locked",
-                        subgoals: ["sub_3_1"],
-                        unlocks: []
-                    },
-                    "sub_3_1": { title: "Slay the Dragon", description: "Protect your people, no matter the cost.", type: "main", status: "locked" },
-                    "side_1": {
-                        title: "The Boasting Contest",
-                        description: "Shut down Unferth's challenge in a battle of wits.",
-                        type: "side",
-                        status: "locked",
-                        conditions: {
-                            requiredCharacters: ["Unferth"],
-                            requiredLocation: "Heorot"
-                        }
-                    }
-                }
-            };
             window.game = new Game();
             game.startGame(gameData);
         });
