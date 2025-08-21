@@ -279,13 +279,14 @@
         }
 
         class Goal {
-            constructor(title, description, type = 'side', status = 'locked', subgoals = [], unlocks = []) {
+            constructor(title, description, type = 'side', status = 'locked', subgoals = [], unlocks = [], conditions = { requiredItems: [], requiredCharacters: [], requiredFlags: [], requiredLocation: null }) {
                 this.title = title;
                 this.description = description;
                 this.type = type; // 'main' or 'side'
                 this.status = status; // 'locked', 'active', 'completed', 'failed'
                 this.subgoals = subgoals; // Array of goal keys
                 this.unlocks = unlocks; // Array of goal keys to unlock upon completion
+                this.conditions = conditions; // e.g., { requiredItems: ['key'], requiredCharacters: ['npc_name'], requiredFlags: ['some_event'], requiredLocation: 'location_key' }
             }
         }
 
@@ -396,6 +397,36 @@
                 // Mermaid IDs can't have special characters or spaces.
                 // Replace spaces and any non-alphanumeric characters with underscores.
                 return name.replace(/[^a-zA-Z0-9_]/g, '_');
+            }
+
+            areGoalConditionsMet(goal) {
+                if (!goal.conditions) {
+                    return false;
+                }
+
+                const { requiredItems, requiredCharacters, requiredFlags, requiredLocation } = goal.conditions;
+
+                // Check location
+                if (requiredLocation && this.currentLocation.name !== requiredLocation) {
+                    return false;
+                }
+
+                // Check items
+                if (requiredItems && !requiredItems.every(itemKey => this.player.inventory.includes(itemKey))) {
+                    return false;
+                }
+
+                // Check characters
+                if (requiredCharacters && !requiredCharacters.every(charKey => this.currentLocation.characters.includes(charKey))) {
+                    return false;
+                }
+
+                // Check flags
+                if (requiredFlags && !requiredFlags.every(flag => this.flags.has(flag))) {
+                    return false;
+                }
+
+                return true;
             }
 
             async renderMap() {
@@ -512,21 +543,35 @@ graph TD
                 // Render Goals Panel
                 const renderGoal = (goalKey, depth = 0) => {
                     const goal = this.goals[goalKey];
-                    if (!goal || goal.status === 'locked') return '';
-                    let goalHtml = `<div class="mb-2" style="margin-left: ${depth * 20}px;">
-                        <p class="mb-1"><strong>${goal.title}</strong> (${goal.status})</p>
-                        <small>${goal.description}</small>`;
-                    if (goal.status === 'active') {
-                        goalHtml += `<br><button class="btn btn-sm btn-success mt-1" onclick="game.completeGoal('${goalKey}')">Complete</button>`;
+                    if (!goal) return '';
+
+                    let goalHtml = '';
+                    if (goal.status === 'locked') {
+                        if (this.areGoalConditionsMet(goal)) {
+                            goalHtml = `<div class="mb-2" style="margin-left: ${depth * 20}px;">
+                                <p class="mb-1"><strong>${goal.title}</strong> (Available)</p>
+                                <small>${goal.description}</small>
+                                <br><button class="btn btn-sm btn-primary mt-1" onclick="game.activateGoal('${goalKey}')">Start Quest</button>
+                            </div>`;
+                        }
+                    } else { // Active, completed, failed
+                        goalHtml = `<div class="mb-2" style="margin-left: ${depth * 20}px;">
+                            <p class="mb-1"><strong>${goal.title}</strong> (${goal.status})</p>
+                            <small>${goal.description}</small>`;
+                        if (goal.status === 'active') {
+                            goalHtml += `<br><button class="btn btn-sm btn-success mt-1" onclick="game.completeGoal('${goalKey}')">Complete</button>`;
+                        }
+                        goalHtml += `</div>`;
                     }
-                    goalHtml += `</div>`;
-                    if(goal.subgoals.length > 0) {
+
+                    if (goal.status !== 'locked' && goal.subgoals.length > 0) {
                         goal.subgoals.forEach(subgoalKey => {
                             goalHtml += renderGoal(subgoalKey, depth + 1);
                         });
                     }
                     return goalHtml;
                 }
+
                 const allSubgoalKeys = new Set();
                 Object.values(this.goals).forEach(g => {
                     if (g.subgoals) {
@@ -614,17 +659,18 @@ graph TD
                 if (goal.status === 'locked') {
                     goal.status = 'active';
                     this.logMessage(`New goal: ${goal.title}`, 'goal');
-                }
 
-                // Activate any locked subgoals.
-                if (goal.subgoals && goal.subgoals.length > 0) {
-                    goal.subgoals.forEach(subgoalKey => {
-                        const subgoal = this.goals[subgoalKey];
-                        if (subgoal && subgoal.status === 'locked') {
-                            subgoal.status = 'active';
-                            this.logMessage(`New objective for "${goal.title}": ${subgoal.title}`, 'goal');
-                        }
-                    });
+                    // Activate any locked subgoals.
+                    if (goal.subgoals && goal.subgoals.length > 0) {
+                        goal.subgoals.forEach(subgoalKey => {
+                            const subgoal = this.goals[subgoalKey];
+                            if (subgoal && subgoal.status === 'locked') {
+                                this.activateGoal(subgoalKey) // Recursive activation for sub-goals
+                            }
+                        });
+                    }
+                    this.updateUI();
+                    this.saveState();
                 }
             }
 
@@ -632,6 +678,8 @@ graph TD
                 const goal = this.goals[goalKey];
                 if (goal && goal.status === 'locked') {
                     this.activateGoal(goalKey);
+                    this.updateUI();
+                    this.saveState();
                 }
             }
 
@@ -679,7 +727,7 @@ graph TD
                 // Load goals
                 for (const key in data.goals) {
                     const goalData = data.goals[key];
-                    this.goals[key] = new Goal(goalData.title, goalData.description, goalData.type, goalData.status, goalData.subgoals, goalData.unlocks);
+                    this.goals[key] = new Goal(goalData.title, goalData.description, goalData.type, goalData.status, goalData.subgoals, goalData.unlocks, goalData.conditions);
                 }
 
                 this.player = this.characters[data.playerCharacter];
@@ -813,7 +861,11 @@ graph TD
                         title: "The Boasting Contest",
                         description: "Shut down Unferth's challenge in a battle of wits.",
                         type: "side",
-                        status: "locked"
+                        status: "locked",
+                        conditions: {
+                            requiredCharacters: ["Unferth"],
+                            requiredLocation: "Heorot"
+                        }
                     }
                 }
             };
