@@ -1,48 +1,55 @@
 const gameData = {
     gameTitle: "Saga of Beowulf",
     playerCharacter: "Beowulf",
-    startingLocation: "Geatland",
+    startingLocation: "HygelacsHall",
     initialReputation: { "Danes": 40, "Geats": 70, "Monsters": 0 },
     locations: {
-        "Geatland": {
-            name: "Geatland",
-            description: "Your windswept homeland. The sea calls to you, promising adventure.",
-            connections: { "sail east": "Danish Coast" },
+        "HygelacsHall": {
+            name: "Hygelac's Hall",
+            description: "The great hall of your king, Hygelac. Here you hear tales of far-off lands and monsters.",
+            connections: { "go to the coast": "GeatishCoast" },
+            characters: ["Hygelac", "Wiglaf"],
+            items: []
+        },
+        "GeatishCoast": {
+            name: "Geatish Coast",
+            description: "The shores of your homeland. From here, you can set sail for adventure.",
+            connections: { "sail east": "DanishCoast", "return to the hall": "HygelacsHall", "travel to the barrow": "DragonsBarrow" },
             characters: [],
             items: []
         },
-        "Danish Coast": {
+        "DanishCoast": {
             name: "Danish Coast",
             description: "You've landed on the shores of Daneland. The great hall of Heorot lies inland.",
-            connections: { "go inland": "Heorot", "sail west": "Geatland" },
+            connections: { "go inland": "Heorot", "sail west": "GeatishCoast" },
             characters: [],
             items: []
         },
         "Heorot": {
             name: "Heorot",
             description: "The great mead hall of King Hrothgar, currently plagued by a nightly terror.",
-            connections: { "go to coast": "Danish Coast", "descend to the mere": "The Haunted Mere" },
+            connections: { "go to coast": "DanishCoast", "descend to the mere": "TheHauntedMere" },
             characters: ["Hrothgar", "Wealhtheow", "Unferth"],
             items: []
         },
-        "The Haunted Mere": {
+        "TheHauntedMere": {
             name: "The Haunted Mere",
             description: "A dark, misty swamp. They say a monster lurks in its depths.",
-            connections: { "return to Heorot": "Heorot", "dive into the water": "Underwater Lair" },
+            connections: { "return to Heorot": "Heorot", "dive into the water": "UnderwaterLair" },
             characters: ["GrendelsMother"],
             items: []
         },
-        "Underwater Lair": {
+        "UnderwaterLair": {
             name: "Underwater Lair",
             description: "A foul cavern hidden from the sun, filled with ancient treasures and a palpable evil.",
-            connections: { "surface": "The Haunted Mere" },
+            connections: { "surface": "TheHauntedMere" },
             characters: [],
             items: ["giants_sword"]
         },
-        "Dragons Barrow": {
+        "DragonsBarrow": {
             name: "Dragon's Barrow",
             description: "An ancient burial mound, now home to a treasure-hoarding dragon.",
-            connections: { "leave": "Geatland" },
+            connections: { "leave": "GeatishCoast" },
             characters: ["Dragon"],
             items: ["treasure_hoard"]
         }
@@ -139,6 +146,15 @@ const gameData = {
                 }
             },
             "interactions": {}
+        },
+        "Hygelac": {
+            name: "Hygelac",
+            attributes: { "strength": 70, "wit": 60 },
+            faction: "Geats",
+            inventory: [],
+            dialogue: {
+                "default": "Beowulf, my kinsman! Welcome. What news do you bring?"
+            }
         },
         "Wiglaf": { name: "Wiglaf", attributes: { "strength": 70, "wit": 60 }, faction: "Geats", inventory: [] },
         "Grendel": { name: "Grendel", attributes: { "strength": 95, "wit": 40 }, faction: "Monsters", inventory: [] },

@@ -245,6 +245,7 @@
     </script>
     <script src="web/game-data.js"></script>
     <script>
+        console.log("Game script loaded.");
         class DialogueManager {
             constructor(game) {
                 this.game = game;
@@ -252,6 +253,18 @@
                 this.character = null;
                 this.currentNodeKey = null;
                 this.dialogueHistory = [];
+            }
+        }
+        class Character {
+            constructor(name, attributes, faction, inventory, skills = {}, equipment = { mainHand: null, offHand: null, armor: null }, dialogue = {}, interactions = {}) {
+                this.name = name;
+                this.attributes = attributes; // e.g., { strength: 80, wit: 60 }
+                this.faction = faction;
+                this.inventory = inventory; // Array of item keys
+                this.skills = skills; // e.g., { 'heavy-weapons': 20, 'trading': 15 }
+                this.equipment = equipment; // e.g., { mainHand: 'sword', armor: 'chainmail' }
+                this.dialogue = dialogue;
+                this.interactions = interactions;
             }
 
             start(charKey) {
