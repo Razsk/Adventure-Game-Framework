@@ -243,11 +243,18 @@
     <script>
         mermaid.initialize({ startOnLoad: false });
     </script>
+    <script src="web/game-data.js"></script>
     <script>
-        // while(true) {}; // Infinite loop for debugging
-        // Game logic will go here
         console.log("Game script loaded.");
-
+        class DialogueManager {
+            constructor(game) {
+                this.game = game;
+                this.active = false;
+                this.character = null;
+                this.currentNodeKey = null;
+                this.dialogueHistory = [];
+            }
+        }
         class Character {
             constructor(name, attributes, faction, inventory, skills = {}, equipment = { mainHand: null, offHand: null, armor: null }, dialogue = {}, interactions = {}) {
                 this.name = name;
@@ -259,38 +266,100 @@
                 this.dialogue = dialogue;
                 this.interactions = interactions;
             }
-        }
 
-        class Item {
-            constructor(name, description, type, slot, effects) {
-                this.name = name;
-                this.description = description;
-                this.type = type; // e.g., 'weapon', 'armor', 'consumable'
-                this.slot = slot; // e.g., 'mainHand', 'offHand', 'armor'
-                this.effects = effects; // e.g., { strength: 10 }
+            start(charKey) {
+                this.character = this.game.characters[charKey];
+                if (!this.character || !this.character.dialogue || !this.character.dialogue.nodes) {
+                    // Fallback to old system or a simple message if new structure is not present
+                    this.game.interactWithCharacter_old(charKey);
+                    return;
+                }
+
+                this.active = true;
+                this.dialogueHistory = [];
+
+                const dialogue = this.character.dialogue;
+                let startNodeKey = dialogue.start_node || 'default';
+
+                // Check flags for a more specific starting point, mimicking the old logic
+                const reversedFlags = [...this.game.flags].reverse();
+                for (const flag of reversedFlags) {
+                    if (dialogue.nodes[flag]) {
+                        startNodeKey = flag;
+                        break;
+                    }
+                }
+
+                this.navigateTo(startNodeKey);
             }
-        }
 
-        class Location {
-            constructor(name, description, connections, characters, items) {
-                this.name = name;
-                this.description = description;
-                this.connections = connections;
-                this.characters = characters;
-                this.items = items;
+            navigateTo(nodeKey) {
+                this.currentNodeKey = nodeKey;
+                const node = this.character.dialogue.nodes[this.currentNodeKey];
+
+                if (!node) {
+                    console.error(`Dialogue node "${nodeKey}" not found for character "${this.character.name}".`);
+                    this.end();
+                    return;
+                }
+
+                this.dialogueHistory.push(nodeKey);
+
+                // Execute any actions on this node
+                if (node.actions) {
+                    node.actions.forEach(action => this.game.executeDialogueAction(action));
+                }
+
+                this.render();
+
+                if (node.ends_dialogue) {
+                    this.end();
+                } else if (node.leads_to) {
+                    this.navigateTo(node.leads_to);
+                }
             }
-        }
 
-        class Goal {
-            constructor(title, description, type = 'side', status = 'locked', subgoals = [], unlocks = [], conditions = { requiredItems: [], requiredCharacters: [], requiredFlags: [], requiredLocation: null }, rewards = { items: [], reputation: {} }) {
-                this.title = title;
-                this.description = description;
-                this.type = type; // 'main' or 'side'
-                this.status = status; // 'locked', 'active', 'completed', 'failed'
-                this.subgoals = subgoals; // Array of goal keys
-                this.unlocks = unlocks; // Array of goal keys to unlock upon completion
-                this.conditions = conditions; // e.g., { requiredItems: ['key'], requiredCharacters: ['npc_name'], requiredFlags: ['some_event'], requiredLocation: 'location_key' }
-                this.rewards = rewards;
+            render() {
+                if (!this.active) return;
+
+                const node = this.character.dialogue.nodes[this.currentNodeKey];
+                let message = `<p><strong>${this.character.name}:</strong> "${node.text}"</p>`;
+
+                if (node.choices && node.choices.length > 0) {
+                    message += '<div class="dialogue-choices">';
+                    node.choices.forEach((choice, index) => {
+                        if (this.game.checkConditions(choice.condition)) {
+                             message += `<button class="btn btn-sm btn-outline-primary mt-1" onclick="game.dialogueManager.choose(${index})">${choice.text}</button>`;
+                        }
+                    });
+                    message += '</div>';
+                }
+
+                this.game.logMessage(message, 'dialogue');
+            }
+
+            choose(choiceIndex) {
+                if (!this.active) return;
+
+                const node = this.character.dialogue.nodes[this.currentNodeKey];
+                const choice = node.choices[choiceIndex];
+
+                if (choice.leads_to) {
+                    this.navigateTo(choice.leads_to);
+                } else {
+                    this.end();
+                }
+            }
+
+            end() {
+                if(this.active) {
+                    this.game.logMessage("The conversation ends.", "game-event");
+                    this.active = false;
+                    this.character = null;
+                    this.currentNodeKey = null;
+                    this.dialogueHistory = [];
+                    this.game.updateUI(); // Update UI in case the conversation changed something
+                }
             }
         }
 
@@ -321,6 +390,56 @@
                     // mapPanel: document.getElementById('map-panel'),
                     factionsPanel: document.getElementById('factions-panel'), // New panel
                 };
+
+                this.dialogueManager = new DialogueManager(this);
+            }
+
+            executeDialogueAction(action) {
+                if (!action) return;
+
+                if (action.add_flag) {
+                    this.flags.add(action.add_flag);
+                    this.logMessage(`(Flag added: ${action.add_flag})`, 'game-event');
+                }
+                if (action.remove_flag) {
+                    this.flags.delete(action.remove_flag);
+                    this.logMessage(`(Flag removed: ${action.remove_flag})`, 'game-event');
+                }
+                if (action.add_item) {
+                    this.player.inventory.push(action.add_item);
+                     this.logMessage(`You received ${this.items[action.add_item].name}.`, 'inventory');
+                }
+                if (action.remove_item) {
+                    this.player.inventory = this.player.inventory.filter(key => key !== action.remove_item);
+                    this.logMessage(`You lost ${this.items[action.remove_item].name}.`, 'inventory');
+                }
+                if (action.change_reputation) {
+                    this.changeReputation(action.change_reputation.faction, action.change_reputation.amount);
+                }
+                if (action.complete_goal) {
+                    this.completeGoal(action.complete_goal);
+                }
+            }
+
+            checkConditions(condition) {
+                if (!condition) return true;
+
+                if (condition.has_flag && !this.flags.has(condition.has_flag)) return false;
+                if (condition.missing_flag && this.flags.has(condition.missing_flag)) return false;
+
+                if (condition.has_item) {
+                    if (!this.player.inventory.includes(condition.has_item)) return false;
+                }
+                if (condition.reputation_greater_than) {
+                    const rep = this.reputation[condition.reputation_greater_than.faction] || 0;
+                    if (rep <= condition.reputation_greater_than.amount) return false;
+                }
+                if (condition.reputation_less_than) {
+                    const rep = this.reputation[condition.reputation_less_than.faction] || 0;
+                    if (rep >= condition.reputation_less_than.amount) return false;
+                }
+
+                return true;
             }
 
             logMessage(message, type = 'normal') {
@@ -389,6 +508,14 @@
             }
 
             interactWithCharacter(charKey) {
+                if (this.dialogueManager.active) {
+                    this.logMessage("You are already in a conversation.", "warning");
+                    return;
+                }
+                this.dialogueManager.start(charKey);
+            }
+
+            interactWithCharacter_old(charKey) {
                 const character = this.characters[charKey];
                 if (!character) return;
 
@@ -724,7 +851,7 @@ graph TD
 
 
                 // Render Map (disabled)
-                // this.renderMap();
+                this.renderMap();
             }
 
             saveState() {
@@ -906,9 +1033,6 @@ graph TD
             }
         }
 
-    <script src="web/game-data.js"></script>
-    <script>
-        // Initialize and load the game
         document.addEventListener('DOMContentLoaded', () => {
             window.game = new Game();
             game.startGame(gameData);
