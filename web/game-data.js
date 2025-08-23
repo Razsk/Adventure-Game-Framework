@@ -62,8 +62,29 @@ const gameData = {
             faction: "Danes",
             inventory: [],
             dialogue: {
-                "default": "Welcome to Heorot, warrior. A darkness has fallen on my great hall. If you have the strength, I would hear your boast.",
-                "main_1": "Your legend is sealed in the rafters of this hall, Beowulf. You have my deepest thanks. But I fear this is not the end of our troubles."
+                start_node: "default",
+                nodes: {
+                    "default": {
+                        text: "Welcome to Heorot, warrior. A darkness has fallen on my great hall. If you have the strength, I would hear your boast.",
+                        choices: [
+                            { text: "I will tell you of my deeds.", leads_to: "boast" },
+                            { text: "I am ready to fight now.", leads_to: "ready_to_fight" }
+                        ]
+                    },
+                    "boast": {
+                        text: "Then speak. Let all the court hear of your prowess.",
+                        actions: [{ add_flag: "player_boasted" }],
+                        ends_dialogue: true
+                    },
+                    "ready_to_fight": {
+                        text: "Eager, I see. Very well. May you be the hero we need.",
+                        ends_dialogue: true
+                    },
+                    "main_1": {
+                        text: "Your legend is sealed in the rafters of this hall, Beowulf. You have my deepest thanks. But I fear this is not the end of our troubles.",
+                        ends_dialogue: true
+                    }
+                }
             }
         },
         "Wealhtheow": { name: "Wealhtheow", attributes: { "strength": 20, "wit": 80 }, faction: "Danes", inventory: [] },
@@ -73,24 +94,51 @@ const gameData = {
             faction: "Danes",
             inventory: ["hrunting"],
             dialogue: {
-                "default": "So, another would-be hero arrives from across the sea. I am Unferth, the king's advisor. Let's see if your deeds match your ambition.",
-                "side_1": "Hmph. A sharp tongue. Perhaps you are not entirely worthless after all. We shall see.",
-                "unferth_convinced": "You have proven your worth, Beowulf. Forgive my sharp words. The sword Hrunting is yours to keep, if you will have it."
-            },
-            interactions: {
-                "gives": {
-                    "grendels_arm": {
-                        "response": "You show the grisly arm to Unferth. He stares, speechless, for a long moment. 'By the gods... you actually did it.'",
-                        "adds_flag": "unferth_convinced",
-                        "removes_item": true,
-                        "rewards": {
-                            "items": ["hrunting"],
-                            "reputation": { "Danes": 15 }
-                        },
-                        "completes_goal": "side_2"
+                "start_node": "default",
+                "nodes": {
+                    "default": {
+                        "text": "So, another would-be hero arrives from across the sea. I am Unferth, the king's advisor. Let's see if your deeds match your ambition.",
+                        "choices": [
+                            { "text": "I am Beowulf of the Geats. I have come to kill your monster.", "leads_to": "boast_response" },
+                            { "text": "And you are...?", "leads_to": "who_are_you" },
+                            {
+                                "text": "[Give Grendel's Arm] I believe this belongs to a friend of yours.",
+                                "leads_to": "give_arm_dialogue",
+                                "condition": { "has_item": "grendels_arm" }
+                            }
+                        ]
+                    },
+                    "boast_response": {
+                        "text": "Hmph. Big words from a sea-rover. Let us hope you can back them up.",
+                        "actions": [{ "add_flag": "unferth_challenged" }, {"change_reputation": { "faction": "Danes", "amount": -5}}],
+                        "ends_dialogue": true
+                    },
+                    "who_are_you": {
+                        "text": "I am Unferth, the king's thyle. You would do well to remember it.",
+                        "ends_dialogue": true
+                    },
+                    "give_arm_dialogue": {
+                        "text": "You show the grisly arm to Unferth. He stares, speechless, for a long moment. 'By the gods... you actually did it.'",
+                        "actions": [
+                            { "add_flag": "unferth_convinced" },
+                            { "remove_item": "grendels_arm" },
+                            { "add_item": "hrunting" },
+                            { "change_reputation": { "faction": "Danes", "amount": 15 } },
+                            { "complete_goal": "side_2" }
+                        ],
+                        "leads_to": "unferth_convinced"
+                    },
+                    "side_1": {
+                        "text": "Hmph. A sharp tongue. Perhaps you are not entirely worthless after all. We shall see.",
+                        "ends_dialogue": true
+                    },
+                    "unferth_convinced": {
+                        "text": "You have proven your worth, Beowulf. Forgive my sharp words. The sword Hrunting is yours to keep, if you will have it.",
+                        "ends_dialogue": true
                     }
                 }
-            }
+            },
+            "interactions": {}
         },
         "Wiglaf": { name: "Wiglaf", attributes: { "strength": 70, "wit": 60 }, faction: "Geats", inventory: [] },
         "Grendel": { name: "Grendel", attributes: { "strength": 95, "wit": 40 }, faction: "Monsters", inventory: [] },
